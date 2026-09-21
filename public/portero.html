@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Portero</title>
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+  <div class="card" id="contadores">Vendidas: -- · Ingresaron: --</div>
+  <div style="padding:16px">
+    <input id="cedula" inputmode="numeric" pattern="[0-9]*" placeholder="Cédula" autofocus />
+    <div id="resultado" class="card" style="margin-top:12px"></div>
+  </div>
+
+  <script>
+    const TOKEN = localStorage.getItem("token");
+    const EVENTO_ID = localStorage.getItem("eventoId");
+    const cedulaInput = document.getElementById("cedula");
+    const resultado = document.getElementById("resultado");
+
+    async function buscar(cedula) {
+      const r = await fetch(`/api/eventos/${EVENTO_ID}/entradas/${cedula}`, {
+        headers: { Authorization: `Bearer ${TOKEN}` },
+      });
+      if (r.status === 404) {
+        resultado.innerHTML = `<div class="err">No encontrada</div>`;
+        return;
+      }
+      const data = await r.json();
+      if (data.checkin_en) {
+        resultado.innerHTML = `<div class="warn">${data.nombre} · Ya ingresó a las ${new Date(data.checkin_en).toLocaleTimeString()}</div>`;
+      } else {
+        resultado.innerHTML = `<div class="ok">${data.nombre} · $${data.monto_pagado}
+          <button onclick="marcarIngreso('${cedula}')">Marcar ingreso</button></div>`;
+      }
+    }
+
+    async function marcarIngreso(cedula) {
+      await fetch(`/api/eventos/${EVENTO_ID}/checkin`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ cedula }),
+      });
+      buscar(cedula);
+      refrescarContadores();
+    }
+
+    cedulaInput.addEventListener("input", () => {
+      if (cedulaInput.value.length >= 6) buscar(cedulaInput.value);
+    });
+
+    async function refrescarContadores() {
+      const r = await fetch(`/api/eventos/${EVENTO_ID}/resumen`, { headers: { Authorization: `Bearer ${TOKEN}` } });
+      const d = await r.json();
+      document.getElementById("contadores").textContent = `Vendidas: ${d.vendidas} · Ingresaron: ${d.ingresaron}`;
+    }
+    refrescarContadores();
+    setInterval(() => { if (!document.hidden) refrescarContadores(); }, 5000);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) refrescarContadores(); });
+  </script>
+</body>
+</html>

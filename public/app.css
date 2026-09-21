@@ -1,0 +1,7 @@
+* { box-sizing: border-box; font-size: 16px; }
+body { margin: 0; font-family: system-ui, sans-serif; background: #111; color: #fff; }
+input, button, select { font-size: 16px; padding: 12px; border-radius: 8px; border: none; width: 100%; }
+button { background: #2563eb; color: white; font-weight: bold; min-height: 44px; }
+.card { background: #1c1c1c; padding: 16px; border-radius: 12px; margin-bottom: 10px; }
+.ok { background: #16a34a; } .warn { background: #ca8a04; } .err { background: #dc2626; }
+.fixed-bottom { position: fixed; bottom: 0; left: 0; right: 0; padding: 12px; background: #000; }

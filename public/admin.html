@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin</title>
+  <link rel="stylesheet" href="app.css" />
+  <style>
+    .top-actions { position: sticky; top: 0; background: #000; padding: 12px; z-index: 5; }
+    .estado-badge { display:inline-block; padding: 2px 8px; border-radius: 6px; font-size: 13px; margin-left: 6px; }
+    .barra { height: 6px; background: #333; border-radius: 4px; overflow: hidden; margin-top: 6px; }
+    .barra-fill { height: 100%; background: #2563eb; }
+    .estado-btn { display:inline-block; width: auto; margin: 3px 4px 3px 0; padding: 8px 12px; }
+    .estado-btn.activo-actual { outline: 2px solid #fff; }
+    .stat-row { display:flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #333; }
+    .volver { background: #333; margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <div class="top-actions">
+    <button onclick="mostrarLista()">Eventos</button>
+  </div>
+
+  <!-- Vista: lista de eventos -->
+  <div id="vistaLista" style="padding:16px">
+    <div id="listaEventos"></div>
+    <button onclick="mostrarFormulario()">+ Nuevo evento</button>
+  </div>
+
+  <!-- Vista: nuevo evento -->
+  <div id="vistaFormulario" style="padding:16px; display:none">
+    <button class="volver" onclick="mostrarLista()">← Volver</button>
+    <input id="f-nombre" placeholder="Nombre del evento" />
+    <input id="f-lugar" placeholder="Lugar" style="margin-top:8px" />
+    <input id="f-descripcion" placeholder="Descripción (opcional)" style="margin-top:8px" />
+    <input id="f-fecha" type="date" style="margin-top:8px" />
+    <input id="f-hora" type="time" style="margin-top:8px" />
+    <input id="f-aforo" type="number" placeholder="Aforo" style="margin-top:8px" />
+    <input id="f-precioBase" type="number" placeholder="Precio por boleta" style="margin-top:8px" />
+    <input id="f-precioMinimo" type="number" placeholder="Precio mínimo por boleta" style="margin-top:8px" />
+    <div id="f-recaudo" class="card" style="margin-top:8px"></div>
+    <div id="f-error" class="err card" style="display:none; margin-top:8px"></div>
+    <button onclick="crearEvento()" style="margin-top:8px">Crear evento</button>
+  </div>
+
+  <!-- Vista: estadísticas de un evento -->
+  <div id="vistaStats" style="padding:16px; display:none">
+    <button class="volver" onclick="mostrarLista()">← Volver</button>
+    <h3 id="stats-nombre"></h3>
+    <div class="card">
+      <div class="stat-row"><span>Boletas vendidas</span><span id="stats-vendidas"></span></div>
+      <div class="stat-row"><span>Total recaudado</span><span id="stats-recaudado"></span></div>
+      <div class="stat-row"><span>Ticket promedio</span><span id="stats-promedio"></span></div>
+      <div class="stat-row"><span>Ingresaron</span><span id="stats-ingresaron"></span></div>
+    </div>
+    <h4>Ventas por vendedor</h4>
+    <div id="stats-vendedores" class="card"></div>
+  </div>
+
+  <script>
+    const TOKEN = localStorage.getItem("token");
+    if (!TOKEN) location.href = "index.html";
+    const authHeaders = { Authorization: `Bearer ${TOKEN}` };
+
+    function mostrarLista() {
+      document.getElementById("vistaLista").style.display = "block";
+      document.getElementById("vistaFormulario").style.display = "none";
+      document.getElementById("vistaStats").style.display = "none";
+      cargarEventos();
+    }
+
+    function mostrarFormulario() {
+      document.getElementById("vistaLista").style.display = "none";
+      document.getElementById("vistaFormulario").style.display = "block";
+      document.getElementById("f-error").style.display = "none";
+    }
+
+    async function cargarEventos() {
+      const r = await fetch("/api/eventos", { headers: authHeaders });
+      const eventos = await r.json();
+      const cont = document.getElementById("listaEventos");
+      cont.innerHTML = eventos.map((ev) => {
+        const pct = ev.aforo ? Math.round((ev.vendidas / ev.aforo) * 100) : 0;
+        const colorEstado = { borrador: "#666", activo: "#16a34a", cerrado: "#ca8a04", cancelado: "#dc2626" }[ev.estado];
+        return `
+          <div class="card">
+            <strong>${ev.nombre}</strong>
+            <span class="estado-badge" style="background:${colorEstado}">${ev.estado}</span>
+            <div>${ev.lugar ?? ""} · ${new Date(ev.fecha_inicio).toLocaleString()}</div>
+            <div class="barra"><div class="barra-fill" style="width:${pct}%"></div></div>
+            <div>${ev.vendidas}/${ev.aforo} boletas · $${Number(ev.recaudado).toLocaleString()} recaudado</div>
+            <div style="margin-top:8px">
+              ${["borrador", "activo", "cerrado", "cancelado"].map((e) =>
+                `<button class="estado-btn ${e === ev.estado ? "activo-actual" : ""}" onclick="cambiarEstado(${ev.id}, '${e}')">${e}</button>`
+              ).join("")}
+            </div>
+            <button onclick="verEstadisticas(${ev.id})" style="margin-top:8px">Ver estadísticas</button>
+          </div>`;
+      }).join("") || "<p>No hay eventos todavía.</p>";
+    }
+
+    function actualizarRecaudo() {
+      const aforo = Number(document.getElementById("f-aforo").value) || 0;
+      const precio = Number(document.getElementById("f-precioBase").value) || 0;
+      document.getElementById("f-recaudo").textContent = `Recaudo si se llena: $${(aforo * precio).toLocaleString()}`;
+    }
+    ["f-aforo", "f-precioBase"].forEach((id) =>
+      document.getElementById(id).addEventListener("input", actualizarRecaudo)
+    );
+
+    async function crearEvento() {
+      const errorDiv = document.getElementById("f-error");
+      errorDiv.style.display = "none";
+
+      const nombre = document.getElementById("f-nombre").value.trim();
+      const lugar = document.getElementById("f-lugar").value.trim();
+      const descripcion = document.getElementById("f-descripcion").value.trim();
+      const fecha = document.getElementById("f-fecha").value;
+      const hora = document.getElementById("f-hora").value || "00:00";
+      const aforo = Number(document.getElementById("f-aforo").value);
+      const precioBase = Number(document.getElementById("f-precioBase").value);
+      const precioMinimo = Number(document.getElementById("f-precioMinimo").value);
+
+      if (!nombre || !fecha || !aforo || !precioBase || !precioMinimo) {
+        errorDiv.textContent = "Completa todos los campos obligatorios.";
+        errorDiv.style.display = "block";
+        return;
+      }
+      if (precioMinimo > precioBase) {
+        errorDiv.textContent = "El precio mínimo no puede ser mayor al precio base.";
+        errorDiv.style.display = "block";
+        return;
+      }
+
+      const fechaInicio = new Date(`${fecha}T${hora}:00`).toISOString();
+
+      const r = await fetch("/api/eventos", {
+        method: "POST",
+        headers: { ...authHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({ nombre, lugar, descripcion, fechaInicio, aforo, precioBase, precioMinimo }),
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        errorDiv.textContent = typeof data.error === "string" ? data.error : "Datos inválidos, revisa los campos.";
+        errorDiv.style.display = "block";
+        return;
+      }
+      mostrarLista();
+    }
+
+    async function cambiarEstado(id, estado) {
+      if (!confirm(`¿Cambiar el evento a "${estado}"?`)) return;
+      await fetch(`/api/eventos/${id}/estado`, {
+        method: "PATCH",
+        headers: { ...authHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify({ estado }),
+      });
+      cargarEventos();
+    }
+
+    async function verEstadisticas(id) {
+      const evR = await fetch(`/api/eventos/${id}`, { headers: authHeaders });
+      const ev = await evR.json();
+      const r = await fetch(`/api/eventos/${id}/estadisticas`, { headers: authHeaders });
+      const data = await r.json();
+
+      document.getElementById("vistaLista").style.display = "none";
+      document.getElementById("vistaStats").style.display = "block";
+      document.getElementById("stats-nombre").textContent = ev.nombre;
+      document.getElementById("stats-vendidas").textContent = data.resumen.entradas_vendidas ?? 0;
+      document.getElementById("stats-recaudado").textContent = `$${Number(data.resumen.total_recaudado ?? 0).toLocaleString()}`;
+      document.getElementById("stats-promedio").textContent = `$${Number(data.resumen.ticket_promedio ?? 0).toLocaleString()}`;
+      document.getElementById("stats-ingresaron").textContent = `${data.asistencia.ingresaron} / ${data.asistencia.vendidas}`;
+      document.getElementById("stats-vendedores").innerHTML = data.porVendedor.map((v) =>
+        `<div class="stat-row"><span>${v.nombre}</span><span>${v.ventas} ventas · $${Number(v.recaudado).toLocaleString()}</span></div>`
+      ).join("") || "<p>Sin ventas todavía.</p>";
+    }
+
+    mostrarLista();
+  </script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Vendedor</title>
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+  <div style="padding:16px; padding-bottom:120px">
+    <input id="monto" type="number" placeholder="Monto total" />
+    <div id="personas"></div>
+    <button onclick="agregarPersona()">+ Agregar persona</button>
+    <div id="preview" class="card"></div>
+    <div id="error" class="err card" style="display:none"></div>
+  </div>
+  <div class="fixed-bottom">
+    <button onclick="confirmarVenta()">Confirmar venta</button>
+  </div>
+
+  <script>
+    const TOKEN = localStorage.getItem("token");
+    const EVENTO_ID = localStorage.getItem("eventoId");
+    const idempotencyKey = crypto.randomUUID();
+
+    function agregarPersona() {
+      const div = document.createElement("div");
+      div.className = "card persona";
+      div.innerHTML = `<input class="cedula" placeholder="Cédula" inputmode="numeric" />
+                        <input class="nombre" placeholder="Nombre" style="margin-top:6px" />`;
+      document.getElementById("personas").appendChild(div);
+      actualizarPreview();
+    }
+    agregarPersona();
+
+    document.getElementById("monto").addEventListener("input", actualizarPreview);
+    document.getElementById("personas").addEventListener("input", actualizarPreview);
+
+    function repartirMonto(total, n) {
+      const base = Math.floor(total / n);
+      const sobrante = total - base * n;
+      return Array.from({ length: n }, (_, i) => base + (i < sobrante ? 1 : 0));
+    }
+
+    function leerPersonas() {
+      return [...document.querySelectorAll(".persona")].map((div) => ({
+        cedula: div.querySelector(".cedula").value.trim(),
+        nombre: div.querySelector(".nombre").value.trim(),
+      }));
+    }
+
+    function actualizarPreview() {
+      const monto = Number(document.getElementById("monto").value) || 0;
+      const personas = leerPersonas();
+      if (!monto || personas.length === 0) return;
+      const montos = repartirMonto(monto, personas.length);
+      document.getElementById("preview").textContent =
+        `${personas.length} personas · $${montos[0]} c/u aprox.`;
+    }
+
+    async function confirmarVenta() {
+      const monto = Number(document.getElementById("monto").value);
+      const personas = leerPersonas();
+      const errorDiv = document.getElementById("error");
+      errorDiv.style.display = "none";
+
+      const r = await fetch(`/api/eventos/${EVENTO_ID}/ventas`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ montoTotal: monto, metodoPago: "efectivo", idempotencyKey, personas }),
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        errorDiv.textContent = data.error?.formErrors?.join(", ") || data.error || "Error";
+        errorDiv.style.display = "block";
+        return;
+      }
+      alert("Venta registrada: " + JSON.stringify(data.detalle));
+      location.reload();
+    }
+  </script>
+</body>
+</html>
