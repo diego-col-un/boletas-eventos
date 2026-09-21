@@ -2,7 +2,7 @@ import { Router } from "express";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { pool } from "../db.js";
-import { firmarToken } from "../auth.js";
+import { firmarToken, requireAuth } from "../auth.js";
 
 export const authRouter = Router();
 
@@ -32,3 +32,7 @@ authRouter.post("/login", async (req, res) => {
   const token = firmarToken({ userId: usuario.id, rol: usuario.rol, nombre: usuario.nombre });
   res.json({ token, nombre: usuario.nombre, rol: usuario.rol });
 });
+
+authRouter.get("/me", requireAuth, (req, res) => {
+     res.json(req.usuario);
+   });
