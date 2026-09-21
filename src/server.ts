@@ -23,6 +23,7 @@ app.use("/api/eventos", eventosRouter);
 app.use("/api", ventasRouter);
 app.use("/api", checkinRouter);
 app.use("/api", estadisticasRouter);
+app.get("/health", (_req, res) => res.status(200).send("ok"));
 
 // Sirve el frontend estático (misma app, sin CORS que gestionar en producción)
 app.use(express.static(path.join(__dirname, "../public")));
