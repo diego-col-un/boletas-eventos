@@ -14,7 +14,11 @@ async function seed() {
     await pool.query(
       `INSERT INTO usuario (nombre, email, password_hash, rol_id)
        VALUES ($1, $2, $3, (SELECT id FROM rol WHERE nombre = $4))
-       ON CONFLICT (email) DO NOTHING`,
+       ON CONFLICT (email) DO UPDATE SET
+         nombre = EXCLUDED.nombre,
+         password_hash = EXCLUDED.password_hash,
+         rol_id = EXCLUDED.rol_id,
+         activo = TRUE`,
       [u.nombre, u.email, hash, u.rol]
     );
     console.log(`Creado: ${u.email} (${u.rol})`);
