@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import type { Request, Response, NextFunction } from "express";
+import { pool } from "./db.js";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 
@@ -37,12 +38,24 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 }
 
 export function requireRole(...roles: JwtPayload["rol"][]) {
-  return (req: Request, res: Response, next: NextFunction) => {
-    const rolActual = String(req.usuario?.rol ?? "").trim().toLowerCase();
-    const rolesPermitidos = roles.map((rol) => rol.toLowerCase());
-    if (!req.usuario || !rolesPermitidos.includes(rolActual)) {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    if (!req.usuario) {
       return res.status(403).json({ error: "No tienes permiso para esto" });
     }
+
+    const { rows } = await pool.query(
+      `SELECT r.nombre AS rol
+       FROM usuario u JOIN rol r ON r.id = u.rol_id
+       WHERE u.id = $1 AND u.activo = TRUE`,
+      [req.usuario.userId]
+    );
+    const rolActual = String(rows[0]?.rol ?? "").trim().toLowerCase();
+    const rolesPermitidos = roles.map((rol) => rol.toLowerCase());
+    if (!rolesPermitidos.includes(rolActual)) {
+      return res.status(403).json({ error: "No tienes permiso para esto" });
+    }
+
+    req.usuario.rol = rolActual as JwtPayload["rol"];
     next();
   };
 }
