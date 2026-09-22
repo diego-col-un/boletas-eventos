@@ -7,24 +7,85 @@
   <link rel="stylesheet" href="app.css" />
 </head>
 <body>
+  <div style="padding:16px">
+    <label for="evento">Evento</label>
+    <select id="evento" style="margin-top:8px"></select>
+    <div id="evento-error" class="err card" style="display:none; margin-top:8px"></div>
+  </div>
   <div class="card" id="contadores">Vendidas: -- · Ingresaron: --</div>
   <div style="padding:16px">
-    <input id="cedula" inputmode="numeric" pattern="[0-9]*" placeholder="Cédula" autofocus />
+    <div style="display:flex; gap:8px">
+      <input id="cedula" inputmode="numeric" pattern="[0-9]*" placeholder="Cédula del comprador" autofocus />
+      <button id="buscar-btn" type="button">Consultar</button>
+    </div>
     <div id="resultado" class="card" style="margin-top:12px"></div>
   </div>
 
   <script>
     const TOKEN = localStorage.getItem("token");
-    const EVENTO_ID = localStorage.getItem("eventoId");
+    const eventoSelect = document.getElementById("evento");
     const cedulaInput = document.getElementById("cedula");
     const resultado = document.getElementById("resultado");
+    const eventoError = document.getElementById("evento-error");
+    const contadores = document.getElementById("contadores");
+
+    if (!TOKEN) location.href = "index.html";
+
+    function eventoId() {
+      return eventoSelect.value;
+    }
+
+    function mostrarError(elemento, mensaje) {
+      elemento.textContent = mensaje;
+      elemento.style.display = "block";
+    }
+
+    async function leerError(response) {
+      const data = await response.json().catch(() => ({}));
+      return typeof data.error === "string" ? data.error : "No se pudo completar la solicitud";
+    }
+
+    async function cargarEventos() {
+      const r = await fetch("/api/eventos", { headers: { Authorization: `Bearer ${TOKEN}` } });
+      if (!r.ok) {
+        mostrarError(eventoError, await leerError(r));
+        return;
+      }
+      const eventos = await r.json();
+      const activos = eventos.filter((evento) => evento.estado === "activo");
+      if (activos.length === 0) {
+        mostrarError(eventoError, "No hay eventos activos para registrar ingresos.");
+        return;
+      }
+      eventoSelect.innerHTML = activos.map((evento) =>
+        `<option value="${evento.id}">${evento.nombre} · ${new Date(evento.fecha_inicio).toLocaleString()}</option>`
+      ).join("");
+      const guardado = localStorage.getItem("eventoId");
+      if (activos.some((evento) => String(evento.id) === guardado)) eventoSelect.value = guardado;
+      localStorage.setItem("eventoId", eventoId());
+      refrescarContadores();
+    }
+
+    eventoSelect.addEventListener("change", () => {
+      localStorage.setItem("eventoId", eventoId());
+      resultado.innerHTML = "";
+      refrescarContadores();
+    });
 
     async function buscar(cedula) {
-      const r = await fetch(`/api/eventos/${EVENTO_ID}/entradas/${cedula}`, {
+      const valor = cedula.trim();
+      if (!eventoId() || !valor) return;
+      resultado.innerHTML = "";
+      resultado.style.display = "block";
+      const r = await fetch(`/api/eventos/${eventoId()}/entradas/${encodeURIComponent(valor)}`, {
         headers: { Authorization: `Bearer ${TOKEN}` },
       });
       if (r.status === 404) {
-        resultado.innerHTML = `<div class="err">No encontrada</div>`;
+        resultado.innerHTML = `<div class="err">No hay una boleta vigente para esa cédula en este evento.</div>`;
+        return;
+      }
+      if (!r.ok) {
+        mostrarError(resultado, await leerError(r));
         return;
       }
       const data = await r.json();
@@ -32,30 +93,41 @@
         resultado.innerHTML = `<div class="warn">${data.nombre} · Ya ingresó a las ${new Date(data.checkin_en).toLocaleTimeString()}</div>`;
       } else {
         resultado.innerHTML = `<div class="ok">${data.nombre} · $${data.monto_pagado}
-          <button onclick="marcarIngreso('${cedula}')">Marcar ingreso</button></div>`;
+          <button id="marcar-btn" type="button">Marcar ingreso</button></div>`;
+        document.getElementById("marcar-btn").addEventListener("click", () => marcarIngreso(valor));
       }
     }
 
     async function marcarIngreso(cedula) {
-      await fetch(`/api/eventos/${EVENTO_ID}/checkin`, {
+      const r = await fetch(`/api/eventos/${eventoId()}/checkin`, {
         method: "POST",
         headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" },
         body: JSON.stringify({ cedula }),
       });
-      buscar(cedula);
+      if (!r.ok) {
+        mostrarError(resultado, await leerError(r));
+        return;
+      }
+      resultado.innerHTML = `<div class="ok">Ingreso marcado correctamente.</div>`;
       refrescarContadores();
     }
 
-    cedulaInput.addEventListener("input", () => {
-      if (cedulaInput.value.length >= 6) buscar(cedulaInput.value);
+    document.getElementById("buscar-btn").addEventListener("click", () => buscar(cedulaInput.value));
+    cedulaInput.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") buscar(cedulaInput.value);
     });
 
     async function refrescarContadores() {
-      const r = await fetch(`/api/eventos/${EVENTO_ID}/resumen`, { headers: { Authorization: `Bearer ${TOKEN}` } });
+      if (!eventoId()) return;
+      const r = await fetch(`/api/eventos/${eventoId()}/resumen`, { headers: { Authorization: `Bearer ${TOKEN}` } });
+      if (!r.ok) {
+        contadores.textContent = await leerError(r);
+        return;
+      }
       const d = await r.json();
-      document.getElementById("contadores").textContent = `Vendidas: ${d.vendidas} · Ingresaron: ${d.ingresaron}`;
+      contadores.textContent = `Vendidas: ${d.vendidas ?? 0} · Ingresaron: ${d.ingresaron ?? 0}`;
     }
-    refrescarContadores();
+    cargarEventos();
     setInterval(() => { if (!document.hidden) refrescarContadores(); }, 5000);
     document.addEventListener("visibilitychange", () => { if (!document.hidden) refrescarContadores(); });
   </script>
