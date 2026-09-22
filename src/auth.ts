@@ -38,7 +38,9 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 
 export function requireRole(...roles: JwtPayload["rol"][]) {
   return (req: Request, res: Response, next: NextFunction) => {
-    if (!req.usuario || !roles.includes(req.usuario.rol)) {
+    const rolActual = String(req.usuario?.rol ?? "").trim().toLowerCase();
+    const rolesPermitidos = roles.map((rol) => rol.toLowerCase());
+    if (!req.usuario || !rolesPermitidos.includes(rolActual)) {
       return res.status(403).json({ error: "No tienes permiso para esto" });
     }
     next();

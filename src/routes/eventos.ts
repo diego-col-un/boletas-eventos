@@ -64,3 +64,4 @@ eventosRouter.patch("/:id/estado", requireRole("admin"), async (req, res) => {
   if (!rows[0]) return res.status(404).json({ error: "Evento no encontrado" });
   res.json(rows[0]);
 });
+
