@@ -4,7 +4,7 @@ import { pool } from "../db.js";
 import { requireAuth, requireRole } from "../auth.js";
 
 export const ventasRouter = Router();
-ventasRouter.use(requireAuth, requireRole("admin", "vendedor"));
+ventasRouter.use(requireAuth); // ← solo exige sesión, sin restringir rol aquí
 
 function repartirMonto(total: number, n: number): number[] {
   const base = Math.floor(total / n);
@@ -21,7 +21,7 @@ const ventaSchema = z.object({
     .min(1),
 });
 
-ventasRouter.post("/eventos/:eventoId/ventas", async (req, res) => {
+ventasRouter.post("/eventos/:eventoId/ventas", requireRole("admin", "vendedor"), async (req, res) => {
   const parsed = ventaSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: parsed.error.flatten() });
   const { montoTotal, metodoPago, idempotencyKey, personas } = parsed.data;
