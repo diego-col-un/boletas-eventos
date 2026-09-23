@@ -51,6 +51,15 @@ export function requireRole(...roles: JwtPayload["rol"][]) {
     );
     const rolActual = String(rows[0]?.rol ?? "").trim().toLowerCase();
     const rolesPermitidos = roles.map((rol) => rol.toLowerCase());
+
+    // TEMPORAL: para ver en los logs de Render qué está comparando de verdad
+    console.log("[requireRole]", {
+      userId: req.usuario.userId,
+      filasEncontradas: rows.length,
+      rolActual,
+      rolesPermitidos,
+    });
+
     if (!rolesPermitidos.includes(rolActual)) {
       return res.status(403).json({ error: "No tienes permiso para esto" });
     }

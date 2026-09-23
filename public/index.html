@@ -28,9 +28,6 @@
         return;
       }
       localStorage.setItem("token", data.token);
-      // De momento pide el id del evento activo manualmente; en el paso 14 se automatiza
-      const eventoId = prompt("ID del evento activo:");
-      localStorage.setItem("eventoId", eventoId);
       location.href = data.rol === "vendedor" ? "vendedor.html" : data.rol === "portero" ? "portero.html" : "admin.html";
     }
   </script>
