@@ -1,7 +1,263 @@
-* { box-sizing: border-box; font-size: 16px; }
-body { margin: 0; font-family: system-ui, sans-serif; background: #111; color: #fff; }
-input, button, select { font-size: 16px; padding: 12px; border-radius: 8px; border: none; width: 100%; }
-button { background: #2563eb; color: white; font-weight: bold; min-height: 44px; }
-.card { background: #1c1c1c; padding: 16px; border-radius: 12px; margin-bottom: 10px; }
-.ok { background: #16a34a; } .warn { background: #ca8a04; } .err { background: #dc2626; }
-.fixed-bottom { position: fixed; bottom: 0; left: 0; right: 0; padding: 12px; background: #000; }
+/* ============================================================
+   Boletas — sistema de diseño
+   Concepto: la boleta física como lenguaje visual (perforado,
+   numeración, papel de ticket) aplicado a una app de punto de
+   venta y control de acceso, usada sobre todo desde el celular.
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --ink: #14171b;
+  --ink-soft: #1a1e24;
+  --surface: #1d2229;
+  --surface-2: #262c35;
+  --line: #333b46;
+  --text: #f3ede3;
+  --text-dim: #9ca3af;
+  --gold: #e8a33d;
+  --gold-dim: #b87f2e;
+  --ok: #4e9b6b;
+  --ok-bg: #21332a;
+  --warn: #c98a3a;
+  --warn-bg: #362a1c;
+  --err: #c1503f;
+  --err-bg: #33201d;
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  background: var(--ink);
+  color: var(--text);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.page {
+  max-width: 480px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding: 20px 18px 32px;
+}
+
+h1, h2, h3, .num {
+  font-family: 'Fraunces', serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+h1 { font-size: 28px; }
+h2 { font-size: 20px; margin-bottom: 12px; }
+h3 { font-size: 18px; }
+
+p { color: var(--text-dim); margin: 4px 0 0; font-size: 14px; }
+
+label {
+  display: block;
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+
+input, select, textarea {
+  width: 100%;
+  font-family: inherit;
+  font-size: 16px;
+  padding: 13px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+input::placeholder { color: var(--text-dim); }
+input:focus, select:focus, textarea:focus {
+  outline: 2px solid var(--gold);
+  outline-offset: 1px;
+  border-color: var(--gold);
+}
+
+.field { margin-bottom: 12px; }
+
+button {
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 13px 16px;
+  border-radius: 10px;
+  border: none;
+  min-height: 46px;
+  cursor: pointer;
+}
+
+.btn, button:not(.btn-ghost):not(.btn-tab):not(.estado-btn) {
+  width: 100%;
+  background: var(--gold);
+  color: #1b1206;
+}
+.btn:active, button:active { transform: translateY(1px); }
+
+.btn-ghost {
+  width: 100%;
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--line);
+}
+
+.btn-tab {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  width: auto;
+}
+
+/* Tarjeta con perforado tipo boleta */
+.ticket {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 18px;
+  margin-bottom: 14px;
+}
+
+.ticket + .ticket { margin-top: 0; }
+
+.stub {
+  position: relative;
+  border-top: 1px dashed var(--line);
+  margin-top: 14px;
+  padding-top: 14px;
+}
+.stub::before, .stub::after {
+  content: "";
+  position: absolute;
+  top: -8px;
+  width: 16px;
+  height: 16px;
+  background: var(--ink);
+  border-radius: 50%;
+}
+.stub::before { left: -26px; }
+.stub::after { right: -26px; }
+
+.card { background: var(--surface); border: 1px solid var(--line); padding: 16px; border-radius: var(--radius); margin-bottom: 10px; }
+
+.status {
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+.status.ok   { background: var(--ok-bg);   color: var(--ok); }
+.status.warn { background: var(--warn-bg); color: var(--warn); }
+.status.err  { background: var(--err-bg);  color: var(--err); }
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+.bar { height: 6px; background: var(--surface-2); border-radius: 4px; overflow: hidden; margin-top: 10px; }
+.bar-fill { height: 100%; background: var(--gold); }
+
+.row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.row + .row { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 8px; }
+
+.meta { font-size: 13px; color: var(--text-dim); margin-top: 4px; }
+
+.persona {
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+.persona input { background: var(--ink-soft); margin-bottom: 8px; }
+.persona input:last-child { margin-bottom: 0; }
+
+.fixed-bottom {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  padding: 14px 18px calc(14px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(to top, var(--ink) 60%, transparent);
+}
+.fixed-bottom .btn, .fixed-bottom button { max-width: 480px; margin: 0 auto; display: block; }
+
+.topbar {
+  position: sticky;
+  top: 0;
+  background: var(--ink);
+  border-bottom: 1px solid var(--line);
+  padding: 14px 18px;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.topbar .brand { font-family: 'Fraunces', serif; font-size: 18px; font-weight: 600; }
+
+.hidden { display: none !important; }
+
+.search-row { display: flex; gap: 8px; align-items: flex-end; }
+.search-row .field { flex: 1; margin-bottom: 0; }
+.search-row button { width: auto; padding: 13px 18px; }
+
+@media (min-width: 520px) {
+  .page { padding-top: 40px; }
+}
+
+/* ---------- Menú hamburguesa ---------- */
+.hamburger {
+  background: none; border: none; padding: 0;
+  width: 34px; height: 34px;
+  display: flex; flex-direction: column; justify-content: center; gap: 5px;
+}
+.hamburger span { display: block; height: 2px; background: var(--text); border-radius: 2px; }
+
+.topbar-left { display: flex; align-items: center; gap: 12px; }
+
+.menu-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.55);
+  opacity: 0; pointer-events: none; transition: opacity .2s;
+  z-index: 20;
+}
+.menu-overlay.visible { opacity: 1; pointer-events: auto; }
+
+.menu-panel {
+  position: fixed; top: 0; left: 0; bottom: 0;
+  width: 80%; max-width: 300px;
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  transform: translateX(-100%);
+  transition: transform .25s ease;
+  z-index: 21;
+  padding: 20px 16px calc(20px + env(safe-area-inset-bottom, 0px));
+  display: flex; flex-direction: column;
+}
+.menu-panel.visible { transform: translateX(0); }
+
+.menu-user { padding-bottom: 16px; margin-bottom: 12px; border-bottom: 1px dashed var(--line); }
+.menu-user .badge { margin-left: 0; margin-top: 6px; }
+
+.menu-links { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+.menu-link {
+  display: block; padding: 12px 10px; border-radius: 8px;
+  color: var(--text); text-decoration: none; font-weight: 500; font-size: 15px;
+}
+.menu-link.activo { background: var(--surface-2); color: var(--gold); }
+
+.menu-logout {
+  margin-top: auto;
+  background: transparent;
+  border: 1px solid var(--err);
+  color: var(--err);
+}

@@ -5,23 +5,35 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Portero</title>
   <link rel="stylesheet" href="app.css" />
+  <script src="menu.js"></script>
 </head>
 <body>
-  <div style="padding:16px">
-    <label for="evento">Evento</label>
-    <select id="evento" style="margin-top:8px"></select>
-    <div id="evento-error" class="err card" style="display:none; margin-top:8px"></div>
-  </div>
-  <div class="card" id="contadores">Vendidas: -- · Ingresaron: --</div>
-  <div style="padding:16px">
-    <div style="display:flex; gap:8px">
-      <input id="cedula" inputmode="numeric" pattern="[0-9]*" placeholder="Cédula del comprador" autofocus />
+  <div class="page">
+    <h1 style="margin-bottom:14px">Control de acceso</h1>
+
+    <div class="field">
+      <label for="evento">Evento</label>
+      <select id="evento"></select>
+    </div>
+    <div id="evento-error" class="status err hidden" style="margin-bottom:14px"></div>
+
+    <div class="ticket" style="text-align:center">
+      <div id="contadores" class="num" style="font-size:22px">Vendidas: -- · Ingresaron: --</div>
+    </div>
+
+    <div class="search-row" style="margin-top:6px">
+      <div class="field">
+        <label for="cedula">Cédula del comprador</label>
+        <input id="cedula" inputmode="numeric" pattern="[0-9]*" placeholder="Ej. 1029384756" autofocus />
+      </div>
       <button id="buscar-btn" type="button">Consultar</button>
     </div>
-    <div id="resultado" class="card" style="margin-top:12px"></div>
+
+    <div id="resultado" style="margin-top:14px"></div>
   </div>
 
   <script>
+    initMenu();
     const TOKEN = localStorage.getItem("token");
     const eventoSelect = document.getElementById("evento");
     const cedulaInput = document.getElementById("cedula");
@@ -29,15 +41,13 @@
     const eventoError = document.getElementById("evento-error");
     const contadores = document.getElementById("contadores");
 
-    if (!TOKEN) location.href = "index.html";
-
     function eventoId() {
       return eventoSelect.value;
     }
 
     function mostrarError(elemento, mensaje) {
       elemento.textContent = mensaje;
-      elemento.style.display = "block";
+      elemento.classList.remove("hidden");
     }
 
     async function leerError(response) {
@@ -76,24 +86,24 @@
       const valor = cedula.trim();
       if (!eventoId() || !valor) return;
       resultado.innerHTML = "";
-      resultado.style.display = "block";
       const r = await fetch(`/api/eventos/${eventoId()}/entradas/${encodeURIComponent(valor)}`, {
         headers: { Authorization: `Bearer ${TOKEN}` },
       });
       if (r.status === 404) {
-        resultado.innerHTML = `<div class="err">No hay una boleta vigente para esa cédula en este evento.</div>`;
+        resultado.innerHTML = `<div class="status err">No hay una boleta vigente para esa cédula en este evento.</div>`;
         return;
       }
       if (!r.ok) {
-        mostrarError(resultado, await leerError(r));
+        resultado.innerHTML = `<div class="status err"></div>`;
+        mostrarError(resultado.firstChild, await leerError(r));
         return;
       }
       const data = await r.json();
       if (data.checkin_en) {
-        resultado.innerHTML = `<div class="warn">${data.nombre} · Ya ingresó a las ${new Date(data.checkin_en).toLocaleTimeString()}</div>`;
+        resultado.innerHTML = `<div class="status warn">${data.nombre} · Ya ingresó a las ${new Date(data.checkin_en).toLocaleTimeString()}</div>`;
       } else {
-        resultado.innerHTML = `<div class="ok">${data.nombre} · $${data.monto_pagado}
-          <button id="marcar-btn" type="button">Marcar ingreso</button></div>`;
+        resultado.innerHTML = `<div class="status ok" style="margin-bottom:10px">${data.nombre} · $${data.monto_pagado}</div>
+          <button id="marcar-btn" type="button">Marcar ingreso</button>`;
         document.getElementById("marcar-btn").addEventListener("click", () => marcarIngreso(valor));
       }
     }
@@ -105,10 +115,11 @@
         body: JSON.stringify({ cedula }),
       });
       if (!r.ok) {
-        mostrarError(resultado, await leerError(r));
+        resultado.innerHTML = `<div class="status err"></div>`;
+        mostrarError(resultado.firstChild, await leerError(r));
         return;
       }
-      resultado.innerHTML = `<div class="ok">Ingreso marcado correctamente.</div>`;
+      resultado.innerHTML = `<div class="status ok">Ingreso marcado correctamente.</div>`;
       refrescarContadores();
     }
 

@@ -5,29 +5,43 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Vendedor</title>
   <link rel="stylesheet" href="app.css" />
+  <script src="menu.js"></script>
 </head>
 <body>
-  <div style="padding:16px; padding-bottom:120px">
-    <input id="monto" type="number" placeholder="Monto total" />
-    <div id="personas"></div>
-    <button onclick="agregarPersona()">+ Agregar persona</button>
-    <div id="preview" class="card"></div>
-    <div id="error" class="err card" style="display:none"></div>
+  <div class="page" style="padding-bottom:110px">
+    <h1 style="margin-bottom:2px">Nueva venta</h1>
+    <p style="margin-bottom:18px">Registra el monto y las personas que entran con esta boleta.</p>
+
+    <div class="ticket">
+      <div class="field" style="margin-bottom:0">
+        <label for="monto">Monto total</label>
+        <input id="monto" type="number" inputmode="numeric" placeholder="$ 0" />
+      </div>
+      <div class="stub">
+        <label style="margin-bottom:10px">Personas</label>
+        <div id="personas"></div>
+        <button class="btn-ghost" onclick="agregarPersona()">+ Agregar persona</button>
+      </div>
+    </div>
+
+    <div id="preview" class="card num" style="text-align:center; font-size:20px;"></div>
+    <div id="error" class="status err hidden"></div>
   </div>
   <div class="fixed-bottom">
     <button onclick="confirmarVenta()">Confirmar venta</button>
   </div>
 
   <script>
+    initMenu();
     const TOKEN = localStorage.getItem("token");
     const EVENTO_ID = localStorage.getItem("eventoId");
     const idempotencyKey = crypto.randomUUID();
 
     function agregarPersona() {
       const div = document.createElement("div");
-      div.className = "card persona";
+      div.className = "persona";
       div.innerHTML = `<input class="cedula" placeholder="Cédula" inputmode="numeric" />
-                        <input class="nombre" placeholder="Nombre" style="margin-top:6px" />`;
+                        <input class="nombre" placeholder="Nombre" />`;
       document.getElementById("personas").appendChild(div);
       actualizarPreview();
     }
@@ -62,7 +76,7 @@
       const monto = Number(document.getElementById("monto").value);
       const personas = leerPersonas();
       const errorDiv = document.getElementById("error");
-      errorDiv.style.display = "none";
+      errorDiv.classList.add("hidden");
 
       const r = await fetch(`/api/eventos/${EVENTO_ID}/ventas`, {
         method: "POST",
@@ -72,7 +86,7 @@
       const data = await r.json();
       if (!r.ok) {
         errorDiv.textContent = data.error?.formErrors?.join(", ") || data.error || "Error";
-        errorDiv.style.display = "block";
+        errorDiv.classList.remove("hidden");
         return;
       }
       alert("Venta registrada: " + JSON.stringify(data.detalle));
