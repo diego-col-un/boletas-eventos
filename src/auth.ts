@@ -54,6 +54,7 @@ export function requireRole(...roles: JwtPayload["rol"][]) {
 
     // TEMPORAL: para ver en los logs de Render qué está comparando de verdad
     console.log("[requireRole]", {
+      ruta: req.originalUrl,
       userId: req.usuario.userId,
       filasEncontradas: rows.length,
       rolActual,
