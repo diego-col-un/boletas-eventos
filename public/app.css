@@ -95,7 +95,7 @@ button {
   cursor: pointer;
 }
 
-.btn, button:not(.btn-ghost):not(.btn-tab):not(.estado-btn) {
+.btn, button:not(.btn-ghost):not(.btn-tab):not(.estado-btn):not(.hamburger):not(.menu-logout) {
   width: 100%;
   background: var(--gold);
   color: #1b1206;
@@ -220,7 +220,7 @@ button {
 /* ---------- Menú hamburguesa ---------- */
 .hamburger {
   background: none; border: none; padding: 0;
-  width: 34px; height: 34px;
+  width: 34px; height: 34px; min-height: 0;
   display: flex; flex-direction: column; justify-content: center; gap: 5px;
 }
 .hamburger span { display: block; height: 2px; background: var(--text); border-radius: 2px; }
@@ -259,6 +259,7 @@ button {
 .menu-link.activo { background: var(--surface-2); color: var(--gold); }
 
 .menu-logout {
+  width: 100%;
   margin-top: auto;
   background: transparent;
   border: 1px solid var(--err);
