@@ -29,13 +29,14 @@
           <button class="hamburger" id="menu-abrir" aria-label="Abrir menú">
             <span></span><span></span><span></span>
           </button>
-          <span class="brand">Boletas</span>
         </div>
+        <img src="logo.png" alt="Sangre Nueva" class="topbar-logo" />
         <span class="badge" style="background:var(--surface-2); color:var(--gold)">${rol}</span>
       </div>
       <div class="menu-overlay" id="menu-overlay"></div>
       <nav class="menu-panel" id="menu-panel">
         <div class="menu-user">
+          <img src="logo.png" alt="Sangre Nueva" class="menu-logo" />
           <div class="num" style="font-size:18px">${nombre}</div>
           <span class="badge" style="background:var(--surface-2); color:var(--gold)">${rol}</span>
         </div>

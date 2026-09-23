@@ -6,16 +6,11 @@
   <title>Portero</title>
   <link rel="stylesheet" href="app.css" />
   <script src="menu.js"></script>
+  <script src="evento.js"></script>
 </head>
 <body>
   <div class="page">
     <h1 style="margin-bottom:14px">Control de acceso</h1>
-
-    <div class="field">
-      <label for="evento">Evento</label>
-      <select id="evento"></select>
-    </div>
-    <div id="evento-error" class="status err hidden" style="margin-bottom:14px"></div>
 
     <div class="ticket" style="text-align:center">
       <div id="contadores" class="num" style="font-size:22px">Vendidas: -- · Ingresaron: --</div>
@@ -35,14 +30,12 @@
   <script>
     initMenu();
     const TOKEN = localStorage.getItem("token");
-    const eventoSelect = document.getElementById("evento");
     const cedulaInput = document.getElementById("cedula");
     const resultado = document.getElementById("resultado");
-    const eventoError = document.getElementById("evento-error");
     const contadores = document.getElementById("contadores");
 
     function eventoId() {
-      return eventoSelect.value;
+      return localStorage.getItem("eventoId");
     }
 
     function mostrarError(elemento, mensaje) {
@@ -54,33 +47,6 @@
       const data = await response.json().catch(() => ({}));
       return typeof data.error === "string" ? data.error : "No se pudo completar la solicitud";
     }
-
-    async function cargarEventos() {
-      const r = await fetch("/api/eventos", { headers: { Authorization: `Bearer ${TOKEN}` } });
-      if (!r.ok) {
-        mostrarError(eventoError, await leerError(r));
-        return;
-      }
-      const eventos = await r.json();
-      const activos = eventos.filter((evento) => evento.estado === "activo");
-      if (activos.length === 0) {
-        mostrarError(eventoError, "No hay eventos activos para registrar ingresos.");
-        return;
-      }
-      eventoSelect.innerHTML = activos.map((evento) =>
-        `<option value="${evento.id}">${evento.nombre} · ${new Date(evento.fecha_inicio).toLocaleString()}</option>`
-      ).join("");
-      const guardado = localStorage.getItem("eventoId");
-      if (activos.some((evento) => String(evento.id) === guardado)) eventoSelect.value = guardado;
-      localStorage.setItem("eventoId", eventoId());
-      refrescarContadores();
-    }
-
-    eventoSelect.addEventListener("change", () => {
-      localStorage.setItem("eventoId", eventoId());
-      resultado.innerHTML = "";
-      refrescarContadores();
-    });
 
     async function buscar(cedula) {
       const valor = cedula.trim();
@@ -129,7 +95,7 @@
     });
 
     async function refrescarContadores() {
-      if (!eventoId()) return;
+      if (!eventoId()) { contadores.textContent = "Selecciona un evento activo."; return; }
       const r = await fetch(`/api/eventos/${eventoId()}/resumen`, { headers: { Authorization: `Bearer ${TOKEN}` } });
       if (!r.ok) {
         contadores.textContent = await leerError(r);
@@ -138,7 +104,12 @@
       const d = await r.json();
       contadores.textContent = `Vendidas: ${d.vendidas ?? 0} · Ingresaron: ${d.ingresaron ?? 0}`;
     }
-    cargarEventos();
+
+    initEventoSelector(() => {
+      resultado.innerHTML = "";
+      refrescarContadores();
+    });
+
     setInterval(() => { if (!document.hidden) refrescarContadores(); }, 5000);
     document.addEventListener("visibilitychange", () => { if (!document.hidden) refrescarContadores(); });
   </script>

@@ -14,6 +14,9 @@
 <body>
   <!-- Vista: lista de eventos -->
   <div id="vistaLista" class="page">
+    <div class="field">
+      <input id="buscar-evento" placeholder="Buscar evento por nombre…" />
+    </div>
     <div id="listaEventos"></div>
     <button onclick="mostrarFormulario()">+ Nuevo evento</button>
   </div>
@@ -67,11 +70,11 @@
       document.getElementById("f-error").classList.add("hidden");
     }
 
-    async function cargarEventos() {
-      const r = await fetch("/api/eventos", { headers: authHeaders });
-      const eventos = await r.json();
+    let todosLosEventos = [];
+
+    function renderEventos(lista, mensajeVacio) {
       const cont = document.getElementById("listaEventos");
-      cont.innerHTML = eventos.map((ev) => {
+      cont.innerHTML = lista.map((ev) => {
         const pct = ev.aforo ? Math.round((ev.vendidas / ev.aforo) * 100) : 0;
         const colorEstado = { borrador: "#9ca3af", activo: "#4e9b6b", cerrado: "#c98a3a", cancelado: "#c1503f" }[ev.estado];
         const bgEstado = { borrador: "#262c35", activo: "#21332a", cerrado: "#362a1c", cancelado: "#33201d" }[ev.estado];
@@ -93,8 +96,25 @@
               <button class="btn-ghost" onclick="verEstadisticas(${ev.id})">Ver estadísticas</button>
             </div>
           </div>`;
-      }).join("") || "<p>No hay eventos todavía.</p>";
+      }).join("") || `<p>${mensajeVacio}</p>`;
     }
+
+    async function cargarEventos() {
+      const r = await fetch("/api/eventos", { headers: authHeaders });
+      todosLosEventos = await r.json();
+      document.getElementById("buscar-evento").value = "";
+      renderEventos(todosLosEventos.slice(0, 3), "No hay eventos todavía.");
+    }
+
+    document.getElementById("buscar-evento").addEventListener("input", (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      if (!q) {
+        renderEventos(todosLosEventos.slice(0, 3), "No hay eventos todavía.");
+        return;
+      }
+      const filtrados = todosLosEventos.filter((ev) => ev.nombre.toLowerCase().includes(q));
+      renderEventos(filtrados, "No se encontró ningún evento con ese nombre.");
+    });
 
     function actualizarRecaudo() {
       const aforo = Number(document.getElementById("f-aforo").value) || 0;
