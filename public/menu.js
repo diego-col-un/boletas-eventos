@@ -1,9 +1,18 @@
 // Menú hamburguesa compartido: navegación según rol, datos del usuario y logout.
 (function () {
   const NAV = {
-    admin: [{ href: "admin.html", label: "Eventos" }],
-    vendedor: [{ href: "vendedor.html", label: "Vender boletas" }],
-    portero: [{ href: "portero.html", label: "Control de acceso" }],
+    admin: [
+      { href: "admin.html", label: "Eventos" },
+      { href: "personas.html", label: "Personas" },
+    ],
+    vendedor: [
+      { href: "vendedor.html", label: "Vender boletas" },
+      { href: "personas.html", label: "Personas" },
+    ],
+    portero: [
+      { href: "portero.html", label: "Control de acceso" },
+      { href: "personas.html", label: "Personas" },
+    ],
   };
 
   function cerrarSesion() {
@@ -57,5 +66,22 @@
     document.getElementById("menu-abrir").addEventListener("click", abrir);
     overlay.addEventListener("click", cerrar);
     document.getElementById("menu-logout").addEventListener("click", cerrarSesion);
+
+    iniciarLatido();
   };
+
+  // Ping liviano a /health cada pocos minutos mientras la pantalla está
+  // visible, para evitar el cold-start de Render (~15 min) y Neon (~5 min)
+  // justo cuando alguien vaya a vender una boleta o hacer un check-in.
+  function iniciarLatido() {
+    const INTERVALO_MS = 4 * 60 * 1000;
+    const pulso = () => {
+      if (!document.hidden) fetch("/health").catch(() => {});
+    };
+    pulso();
+    setInterval(pulso, INTERVALO_MS);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) pulso();
+    });
+  }
 })();

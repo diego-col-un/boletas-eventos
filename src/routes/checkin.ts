@@ -5,6 +5,20 @@ import { requireAuth, requireRole } from "../auth.js";
 export const checkinRouter = Router();
 checkinRouter.use(requireAuth);
 
+// Listado completo de compradores de un evento, ordenado por nombre.
+// Todos los roles pueden verlo (admin, vendedor, portero).
+checkinRouter.get("/eventos/:eventoId/entradas", requireRole("admin", "vendedor", "portero"), async (req, res) => {
+  const { rows } = await pool.query(
+    `SELECT p.nombre, p.cedula, e.monto_pagado, e.checkin_en
+     FROM entrada e
+     JOIN persona p ON p.id = e.persona_id
+     WHERE e.evento_id = $1 AND NOT e.anulada
+     ORDER BY p.nombre ASC`,
+    [req.params.eventoId]
+  );
+  res.json(rows);
+});
+
 // Buscar por cédula (admin y portero)
 checkinRouter.get("/eventos/:eventoId/entradas/:cedula", requireRole("admin", "portero"), async (req, res) => {
   const cedula = typeof req.params.cedula === "string" ? req.params.cedula.trim() : "";

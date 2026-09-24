@@ -9,6 +9,7 @@ import { eventosRouter } from "./routes/eventos.js";
 import { ventasRouter } from "./routes/ventas.js";
 import { checkinRouter } from "./routes/checkin.js";
 import { estadisticasRouter } from "./routes/estadisticas.js";
+import { pool } from "./db.js";
 
 dotenv.config();
 
@@ -23,7 +24,16 @@ app.use("/api/eventos", eventosRouter);
 app.use("/api", ventasRouter);
 app.use("/api", checkinRouter);
 app.use("/api", estadisticasRouter);
-app.get("/health", (_req, res) => res.status(200).send("ok"));
+// Golpea el servidor (Render) y la base de datos (Neon) en una sola petición,
+// para usarse como "latido" desde el frontend y evitar el cold-start de ambos.
+app.get("/health", async (_req, res) => {
+  try {
+    await pool.query("SELECT 1");
+    res.status(200).send("ok");
+  } catch {
+    res.status(503).send("db-down");
+  }
+});
 
 // Sirve el frontend estático (misma app, sin CORS que gestionar en producción)
 app.use(express.static(path.join(__dirname, "../public")));
