@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Personas</title>
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+  <div class="evento-bar">
+    <label for="evento" style="margin:0">Evento</label>
+    <select id="evento"></select>
+    <div id="evento-error" class="status err hidden evento-bar-error"></div>
+  </div>
+
+  <div class="page">
+    <h1>Personas</h1>
+    <p id="resumen">Cargando…</p>
+
+    <div class="search-row" style="margin-top:16px">
+      <div class="field">
+        <label for="buscar">Buscar por nombre o cédula</label>
+        <input id="buscar" placeholder="Escribe para filtrar…" autocomplete="off" />
+      </div>
+    </div>
+
+    <div class="ticket" style="margin-top:14px; padding:8px 16px;">
+      <div id="lista"></div>
+      <div id="vacio" class="hidden" style="padding:16px 0; text-align:center; color:var(--text-dim)">
+        Nadie coincide con esa búsqueda.
+      </div>
+    </div>
+  </div>
+
+  <script src="menu.js"></script>
+  <script>
+    const TOKEN = localStorage.getItem("token");
+    if (!TOKEN) location.href = "index.html";
+    const authHeaders = { Authorization: `Bearer ${TOKEN}` };
+
+    const eventoSelect = document.getElementById("evento");
+    const eventoError = document.getElementById("evento-error");
+    const resumen = document.getElementById("resumen");
+    const buscarInput = document.getElementById("buscar");
+    const lista = document.getElementById("lista");
+    const vacio = document.getElementById("vacio");
+
+    let personas = [];
+
+    function mostrarError(elemento, mensaje) {
+      elemento.textContent = mensaje;
+      elemento.classList.remove("hidden");
+    }
+
+    async function leerError(response) {
+      const data = await response.json().catch(() => ({}));
+      return typeof data.error === "string" ? data.error : "No se pudo completar la solicitud";
+    }
+
+    function eventoId() {
+      return eventoSelect.value;
+    }
+
+    async function cargarEventos() {
+      const r = await fetch("/api/eventos", { headers: authHeaders });
+      if (!r.ok) {
+        mostrarError(eventoError, await leerError(r));
+        return;
+      }
+      const eventos = await r.json();
+      if (eventos.length === 0) {
+        mostrarError(eventoError, "Todavía no hay eventos creados.");
+        return;
+      }
+      eventos.sort((a, b) => new Date(b.fecha_inicio) - new Date(a.fecha_inicio));
+      eventoSelect.innerHTML = eventos.map((ev) =>
+        `<option value="${ev.id}">${ev.nombre} · ${new Date(ev.fecha_inicio).toLocaleDateString()}</option>`
+      ).join("");
+      const guardado = localStorage.getItem("eventoId");
+      if (eventos.some((ev) => String(ev.id) === guardado)) eventoSelect.value = guardado;
+      localStorage.setItem("eventoId", eventoId());
+      cargarPersonas();
+    }
+
+    eventoSelect.addEventListener("change", () => {
+      localStorage.setItem("eventoId", eventoId());
+      cargarPersonas();
+    });
+
+    async function cargarPersonas() {
+      resumen.textContent = "Cargando…";
+      lista.innerHTML = "";
+      vacio.classList.add("hidden");
+
+      const r = await fetch(`/api/eventos/${eventoId()}/entradas`, { headers: authHeaders });
+      if (!r.ok) {
+        resumen.textContent = await leerError(r);
+        return;
+      }
+      personas = await r.json();
+      const ingresaron = personas.filter((p) => p.checkin_en).length;
+      resumen.textContent = `${personas.length} ${personas.length === 1 ? "persona" : "personas"} · ${ingresaron} ya ingresaron`;
+      render(personas);
+    }
+
+    function render(items) {
+      if (items.length === 0) {
+        lista.innerHTML = "";
+        vacio.classList.remove("hidden");
+        return;
+      }
+      vacio.classList.add("hidden");
+      lista.innerHTML = items.map((p) => {
+        const ingreso = p.checkin_en
+          ? `<span class="badge" style="background:var(--ok-bg); color:var(--ok)">Ingresó ${new Date(p.checkin_en).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>`
+          : `<span class="badge" style="background:var(--surface-2); color:var(--text-dim)">Pendiente</span>`;
+        return `
+          <div class="row">
+            <div>
+              <div class="num" style="font-size:15px">${escapeHtml(p.nombre)}</div>
+              <div class="meta">CC ${escapeHtml(p.cedula)} · $${Number(p.monto_pagado).toLocaleString()}</div>
+            </div>
+            <div>${ingreso}</div>
+          </div>`;
+      }).join("");
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    }
+
+    buscarInput.addEventListener("input", () => {
+      const q = buscarInput.value.trim().toLowerCase();
+      if (!q) { render(personas); return; }
+      render(personas.filter((p) => p.nombre.toLowerCase().includes(q) || p.cedula.includes(q)));
+    });
+
+    initMenu();
+    cargarEventos();
+  </script>
+</body>
+</html>
